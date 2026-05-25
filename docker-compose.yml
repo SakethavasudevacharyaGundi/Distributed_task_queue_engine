@@ -14,6 +14,8 @@ services:
       POSTGRES_DB: taskdb
     ports:
       - "5433:5432"
+    volumes:
+    - postgres_data:/var/lib/postgresql
 
   server:
     build:
@@ -24,6 +26,8 @@ services:
     depends_on:
       - redis
       - postgres
+    env_file:
+      - .env
 
   worker1:
     build:
@@ -33,6 +37,8 @@ services:
       - redis
       - postgres
     restart: always
+    env_file:
+      - .env
   
   worker2:
     build:
@@ -42,6 +48,8 @@ services:
       - redis
       - postgres
     restart: always
+    env_file:
+      - .env
 
   worker3:
     build:
@@ -51,6 +59,8 @@ services:
       - redis
       - postgres
     restart: always
+    env_file:
+      - .env 
   prometheus:
     image: prom/prometheus:latest
     volumes:
@@ -62,3 +72,6 @@ services:
     image: grafana/grafana:latest
     ports:
       - "3000:3000"
+
+volumes:
+    postgres_data:

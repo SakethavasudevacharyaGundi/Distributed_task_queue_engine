@@ -2,8 +2,8 @@ import http from 'k6/http';
 import { check } from 'k6';
 
 export const options = {
-    vus: 1,
-    duration: '5s',
+    vus: 10,
+    duration: '15s',
 };
 
 export default function () {

@@ -9,10 +9,14 @@ import (
 
 	"github.com/Sakethavasudevacharyagundi/Distributed-task-queue-engine/internal/models"
 	"github.com/Sakethavasudevacharyagundi/Distributed-task-queue-engine/internal/queue"
+	"github.com/Sakethavasudevacharyagundi/Distributed-task-queue-engine/internal/ratelimiter"
+	"github.com/Sakethavasudevacharyagundi/Distributed-task-queue-engine/internal/storage"
 )
 
 type HTTPServer struct {
-	Queue *queue.RedisQueue
+	Queue   *queue.RedisQueue
+	Repo    *storage.PostgresStorage
+	Limiter *ratelimiter.RateLimiter
 }
 
 type SubmitTaskRequest struct {
@@ -20,6 +24,7 @@ type SubmitTaskRequest struct {
 	Payload    string `json:"payload"`
 	Priority   int    `json:"priority"`
 	MaxRetries int    `json:"max_retries"`
+	TenantID   string `json:"tenant_id"`
 }
 
 func (s *HTTPServer) SubmitTask(
@@ -37,8 +42,24 @@ func (s *HTTPServer) SubmitTask(
 	}
 
 	var req SubmitTaskRequest
-
-	err := json.NewDecoder(r.Body).Decode(&req)
+	allowed, err := s.Limiter.Allow("ratelimit:"+r.RemoteAddr, 100, time.Minute)
+	if err != nil {
+		http.Error(
+			w,
+			err.Error(),
+			http.StatusInternalServerError,
+		)
+		return
+	}
+	if !allowed {
+		http.Error(
+			w,
+			"rate limit exceeded",
+			http.StatusTooManyRequests,
+		)
+		return
+	}
+	err = json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
 		http.Error(
 			w,
@@ -58,8 +79,18 @@ func (s *HTTPServer) SubmitTask(
 		RetryCount: 0,
 		CreatedAt:  time.Now(),
 		UpdatedAt:  time.Now(),
+		Claimed:    false,
+		TenantID:   req.TenantID,
 	}
-
+	err = s.Repo.CreateTask(task)
+	if err != nil {
+		http.Error(
+			w,
+			err.Error(),
+			http.StatusInternalServerError,
+		)
+		return
+	}
 	err = s.Queue.Enqueue(task)
 	if err != nil {
 		http.Error(

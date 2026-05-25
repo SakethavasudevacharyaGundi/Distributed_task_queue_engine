@@ -41,12 +41,12 @@ func (r *RedisQueue) Enqueue(task *models.Task) error {
 	if err != nil {
 		return err
 	}
-	queueName := "queue_low"
+	queueName := task.TenantID + ":queue_low"
 	switch task.Priority {
 	case models.PriorityMedium:
-		queueName = "queue_medium"
+		queueName = task.TenantID + ":queue_medium"
 	case models.PriorityHigh:
-		queueName = "queue_high"
+		queueName = task.TenantID + ":queue_high"
 	}
 	err = r.client.ZAdd(
 		ctx,
@@ -62,7 +62,16 @@ func (r *RedisQueue) Enqueue(task *models.Task) error {
 	return nil
 }
 func (r *RedisQueue) Dequeue() (*models.Task, error) {
-	queues := []string{"queue_high", "queue_medium", "queue_low"}
+	queues := []string{
+
+		"tenantA_queue_high",
+		"tenantA_queue_medium",
+		"tenantA_queue_low",
+
+		"tenantB_queue_high",
+		"tenantB_queue_medium",
+		"tenantB_queue_low",
+	}
 	for _, queueName := range queues {
 		result, err := r.client.ZPopMin(ctx, queueName).Result()
 		if err != nil {
@@ -151,7 +160,7 @@ func (r *RedisQueue) MarkCompleted(task *models.Task) error {
 	if err != nil {
 		return err
 	}
-	return r.client.ZRem(ctx, "queue_processing", task.ID).Err()
+	return r.client.ZRem(ctx, "processing", task.ID).Err()
 }
 func (r *RedisQueue) GetTask(taskID string) (*models.Task, error) {
 	data, err := r.client.Get(ctx, "task:"+taskID).Result()
@@ -166,12 +175,12 @@ func (r *RedisQueue) GetTask(taskID string) (*models.Task, error) {
 	return &task, nil
 }
 func (r *RedisQueue) RequeueTask(task *models.Task) error {
-	queueName := "queue_low"
+	queueName := task.TenantID + ":queue_low"
 	switch task.Priority {
 	case models.PriorityMedium:
-		queueName = "queue_medium"
+		queueName = task.TenantID + ":queue_medium"
 	case models.PriorityHigh:
-		queueName = "queue_high"
+		queueName = task.TenantID + ":queue_high"
 	}
 	err := r.client.ZAdd(
 		ctx,
@@ -263,4 +272,15 @@ func (r *RedisQueue) UpdateQueueDepthMetric() {
 	metrics.QueueDepth.Set(
 		float64(total),
 	)
+}
+func (r *RedisQueue) ClaimTask(
+	taskID string,
+) (bool, error) {
+
+	return r.repo.ClaimTask(
+		taskID,
+	)
+}
+func (r *RedisQueue) ResetClaim(taskID string) error {
+	return r.repo.ResetClaim(taskID)
 }
