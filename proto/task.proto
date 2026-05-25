@@ -1,0 +1,38 @@
+syntax = "proto3";
+package takqueue;
+option go_package ="github.com/Sakethavasudevacharyagundi/Distributed-task-queue-engine";
+message TaskRequest{
+    string name = 1;
+    string payload =2;
+    int32 priority =3;
+    int32 max_retries =4;
+}
+
+message TaskResponse{
+    string id =1;
+    string status =2;
+}
+
+message TaskID{
+    string id=1;
+}
+
+message TaskData{
+    string id=1;
+    string name=2;
+    string payload=3;
+    string status =4;
+    int32 priority=5;
+    int32 retrycount=6;
+}
+
+service TaskService{
+    rpc SubmitTask(TaskRequest)
+        returns (TaskResponse);
+    
+    rpc GetTask(TaskID)
+        returns (TaskData);
+
+    rpc ReplayDeadlettterTask(TaskID)
+        returns (TaskResponse);
+}

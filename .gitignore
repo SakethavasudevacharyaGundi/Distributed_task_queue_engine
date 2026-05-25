@@ -1,0 +1,30 @@
+# binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Go
+bin/
+vendor/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# env
+.env
+
+# logs
+*.log
+
+# Docker volumes
+data/
+
+# Grafana
+grafana-storage/

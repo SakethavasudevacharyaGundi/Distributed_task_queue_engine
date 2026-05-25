@@ -1,0 +1,64 @@
+
+services:
+
+  redis:
+    image: redis:latest
+    ports:
+      - "6380:6379"
+  
+  postgres:
+    image: postgres:latest
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: taskdb
+    ports:
+      - "5433:5432"
+
+  server:
+    build:
+      context: .
+      dockerfile: Dockerfile.server
+    ports:
+      - "8081:8080"
+    depends_on:
+      - redis
+      - postgres
+
+  worker1:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    depends_on:
+      - redis
+      - postgres
+    restart: always
+  
+  worker2:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    depends_on:
+      - redis
+      - postgres
+    restart: always
+
+  worker3:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    depends_on:
+      - redis
+      - postgres
+    restart: always
+  prometheus:
+    image: prom/prometheus:latest
+    volumes:
+      - ./deployments/prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
